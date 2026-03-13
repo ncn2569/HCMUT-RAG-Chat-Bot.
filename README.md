@@ -3,8 +3,6 @@
 Trợ lý tư vấn tuyển sinh thông minh cho Trường Đại học Bách khoa TP.HCM, sử dụng RAG (Retrieval-Augmented Generation) với Google Gemini.
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
-![Gradio](https://img.shields.io/badge/Gradio-4.0+-orange.svg)
-![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 ## 🚀 Tính năng
 
@@ -14,6 +12,7 @@ Trợ lý tư vấn tuyển sinh thông minh cho Trường Đại học Bách kh
 - **Gemini Integration**: Sử dụng Gemma 3 27B cho generation & Gemini Embedding cho retrieval
 
 ## 📁 Cấu trúc dự án
+```text
 hcmut-rag-chatbot/
 ├── app/
 │   └── gradio.py              # Giao diện web Gradio
@@ -39,6 +38,7 @@ hcmut-rag-chatbot/
 │   └── .env                   # API keys (tự tạo với API_KEY theo template)
 ├── main.py                    # Entry point
 └── requirements.txt           # Dependencies
+```
 ## 🛠️ Cài đặt
 
 ### 1. Clone repository
@@ -76,15 +76,34 @@ HF_TOKEN= your huggings face token.
 ```
 🔑 Lấy API key miễn phí tại: Google AI Studio
 
-### 5. Chuẩn bị dữ liệu lần đầu
-Đặt file Excel vào data/raw/
-Uncomment embedding() ở hàm main, comment demo.launch lại để khởi tạo vector data.
-Sau khi xong comment lại embedding(), uncomment demo.launch rồi chạy.
-🎯 Khởi động chat bot.
-```bash
-python main.py
-```
+### 5. Chuẩn bị dữ liệu
 
+**Bước 5.1:** Đặt file Excel vào thư mục `data/raw/`
+
+**Bước 5.2:** Mở file `main.py`, sửa như sau để chạy embedding:
+
+    # Comment dòng này lại
+    # demo.launch(...)
+    
+    # Uncomment dòng này
+    embedding()
+
+**Bước 5.3:** Chạy lệnh để tạo vector embeddings:
+
+    python main.py
+
+**Bước 5.4:** Sau khi chạy xong, sửa lại `main.py` để chạy web:
+
+    # Uncomment dòng này
+    demo.launch(...)
+    
+    # Comment dòng này lại
+    # embedding()
+
+**Bước 5.5:** Giờ chạy chatbot:
+
+    python main.py
+```text
 🔧 Cách hoạt động (Pipeline)
 User Query → Query Rewriting (dựa trên history) 
     → HYDE (tạo hypothetical query)
@@ -94,10 +113,12 @@ User Query → Query Rewriting (dựa trên history)
     → Build Prompt 
     → Generate Answer
     → Update History
-
+```
+```text
 📝 Lưu ý
 - Dữ liệu hiện tại là bản crawl thử nghiệm, có thể chưa đầy đủ.
 - Dữ liệu theo format Q-A, với 1 cột Question ghi các câu hỏi và 1 cột Answers ghi các câu trả lời.
 - Cần API key Gemini để chạy (có free tier).
 - File .env và thư mục data/ đã được ignore để bảo mật.
 - Chưa có Cross-Encoder rerank (để nâng cấp sau khi data lớn hơn).
+```
