@@ -9,7 +9,7 @@ with open('data/vectors/vectors1.jsonl', "r", encoding="utf-8") as f:
     for line in f:
         line = line.strip()
         if line:
-            data.append(json.loads(line))  # ✅
+            data.append(json.loads(line))  
 def build_prompt(query: str, contexts: list) -> str:
     """
     Build prompt với Role + Context + Constraints
@@ -48,7 +48,7 @@ def rewrite_query_with_full_history(current_query: str, history: list) -> str:
     # Toàn bộ history
     history_text = "\n\n".join([
         f"User: {turn.get('rewritten', turn['user'])}\nAssistant: {turn['assistant']}"
-        for turn in history[-5:]  # ✅ dùng rewritten nếu có, fallback về user gốc
+        for turn in history[-5:]  # dùng rewritten nếu có, fallback về user gốc
     ])
 
     rewrite_prompt = f"""Dựa trên lịch sử trò chuyện gần nhất, viết lại câu hỏi sau thành câu độc lập, đầy đủ ngữ cảnh.

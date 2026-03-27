@@ -33,8 +33,7 @@ def load_embedder():
 #         for chunk in chunks:
 #             f.write(json.dumps({"text": chunk['text']}, ensure_ascii=False) + '\n')
     
-#     print(f"✅ Saved: vectors.npy ({embeddings.shape})")
-#     print(f"✅ Saved: vectors.json ({len(chunks)} items)")
+
 def embedding():
     chunks = []
     with open('data/processed/data-cleaned.jsonl', 'r', encoding='utf-8') as f:
@@ -50,11 +49,11 @@ def embedding():
         result = client.models.embed_content(
             model=os.getenv('model_embedding_name'),
             contents=batch,
-            config={"task_type": "RETRIEVAL_DOCUMENT"}  # ✅ documents
+            config={"task_type": "RETRIEVAL_DOCUMENT"}  
         )
         for emb in result.embeddings:
             all_embeddings.append(emb.values)
-        print(f"✅ Embedded {min(i + batch_size, len(texts))}/{len(texts)}")
+        print(f"Embedded {min(i + batch_size, len(texts))}/{len(texts)}")
 
     embeddings = np.array(all_embeddings)
     np.save('data/vectors/vectors1.npy', embeddings)
@@ -63,5 +62,5 @@ def embedding():
         for chunk in chunks:
             f.write(json.dumps({"text": chunk['text']}, ensure_ascii=False) + '\n')
 
-    print(f"\n✅ Saved: vectors1.npy {embeddings.shape}")
-    print(f"✅ Saved: vectors1.jsonl ({len(chunks)} items)")
+    print(f"\nSaved: vectors1.npy {embeddings.shape}")
+    print(f"Saved: vectors1.jsonl ({len(chunks)} items)")
