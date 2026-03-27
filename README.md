@@ -1,9 +1,3 @@
----
-title: hcmut-rag-chatbot
-app_file: app.py
-sdk: gradio
-sdk_version: 6.9.0
----
 # 🎓 HCMUT RAG Chatbot
 
 Trợ lý tư vấn tuyển sinh thông minh cho Trường Đại học Bách khoa TP.HCM, sử dụng RAG (Retrieval-Augmented Generation) với Google Gemini.
