@@ -1,13 +1,36 @@
-from google import genai
-from dotenv import load_dotenv
-import os
+"""
+rag/generation/build_prompt.py
+===============================
+Module xây dựng prompt và xử lý query trước khi đưa vào LLM.
 
-load_dotenv("config/.env")
-client = genai.Client(api_key=os.getenv("API_KEY"))
+Gồm 2 chức năng chính:
+  1. `build_prompt(query, contexts)` : Tạo prompt cuối cùng cho LLM trả lời.
+  2. `rewrite_and_classify_query()`  : Viết lại query + phân loại SIMPLE/COMPLEX
+                                       trong 1 lần gọi API (tiết kiệm latency).
+
+THAY ĐỔI SO VỚI BẢN CŨ:
+  - Trước: `client = genai.Client(...)` được tạo riêng trong file này.
+  - Sau: import `client` từ `rag.core.container` — dùng chung 1 client duy nhất.
+"""
+
+import json
+import os
+import re
+
+from rag.core.container import container as _container
 
 
 def build_prompt(query: str, contexts: list) -> str:
-    # Gộp top 3 QA thành context
+    """
+    Tạo prompt hoàn chỉnh để gửi cho LLM sinh câu trả lời cuối cùng.
+
+    Args:
+        query    : Câu hỏi (đã được rewrite nếu cần).
+        contexts : Danh sách đoạn văn bản context từ retrieval.
+
+    Returns:
+        Chuỗi prompt đầy đủ.
+    """
     context_text = "\n\n".join([f"{text}" for text in contexts])
 
     return f"""Bạn là trợ lý tư vấn tuyển sinh của Trường Đại học Bách khoa TP.HCM (HCMUT).
@@ -26,46 +49,16 @@ def build_prompt(query: str, contexts: list) -> str:
     Trả lời:"""
 
 
-def rewrite_query_with_full_history(current_query: str, history: list) -> str:
-    if not history:
-        return current_query
-
-    # Toàn bộ history
-    history_text = "\n\n".join(
-        [
-            f"User: {turn.get('rewritten', turn['user'])}\nAssistant: {turn['assistant']}"
-            for turn in history[-5:]  # dùng rewritten nếu có, fallback về user gốc
-        ]
-    )
-
-    rewrite_prompt = f"""Dựa trên lịch sử trò chuyện gần nhất, viết lại câu hỏi sau thành câu độc lập, đầy đủ ngữ cảnh.
-
-    Lịch sử trò chuyện:
-    {history_text}
-
-    Câu hỏi mới: "{current_query}"
-
-    Hướng dẫn:
-    - Nếu câu hỏi có đại từ hoặc thiếu ngữ cảnh, bổ sung từ lịch sử
-    - Giữ nguyên ý nghĩa gốc, không thay đổi ý nghĩa của câu hỏi,
-    - Chỉ viết lại câu hỏi, TUYỆT ĐỐI KHÔNG trả lời.
-
-    Câu hỏi đã viết lại:"""
-
-    try:
-        response = client.models.generate_content(
-            model=os.getenv("model_name"), contents=rewrite_prompt
-        )
-        rewritten = response.text.strip() if response.text else current_query
-        rewritten = rewritten.strip('"').strip("'")
-    except Exception as e:
-        print(f"Error ở bước rewrite: {e}")
-        rewritten = current_query
-
-    return rewritten
-
-
 def rewrite_and_classify_query(current_query: str, history: list) -> tuple[str, str]:
+    """
+    Args:
+        current_query : Câu hỏi hiện tại của người dùng.
+        history       : Lịch sử hội thoại từ `rag.chat.history.get_history()`.
+
+    Returns:
+        Tuple (rewritten_query: str, query_type: str)
+        query_type là "SIMPLE" hoặc "COMPLEX".
+    """
     history_text = "Không có"
     if history:
         history_text = "\n\n".join(
@@ -90,23 +83,15 @@ Bạn PHẢI trả về định dạng JSON chính xác như sau, không xuất 
   "query_type": "SIMPLE"
 }}"""
 
-    # try:
-    response = client.models.generate_content(
+    response = _container.client.models.generate_content(
         model=os.getenv("model_name"), contents=prompt
     )
     text = response.text.strip()
-    import re
-    import json
 
     if json_match := re.search(r"\{.*\}", text, re.DOTALL):
-        text = json_match.group(0)
+        text = json_match[0]
 
-    data = json.loads(text)
-    rewritten = data.get("rewritten_query", current_query)
-    q_type = data.get("query_type", "SIMPLE").upper()
-    # if q_type not in ["SIMPLE", "COMPLEX"]:
-    #     q_type = "SIMPLE"
+    parsed = json.loads(text)
+    rewritten = parsed.get("rewritten_query", current_query)
+    q_type = parsed.get("query_type", "SIMPLE").upper()
     return rewritten, q_type
-    # except Exception as e:
-    #     print(f"Error ở bước rewrite & classify: {e}")
-    #     return current_query, "SIMPLE"

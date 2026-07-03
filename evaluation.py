@@ -17,8 +17,11 @@ from ragas.metrics._context_recall import LLMContextRecall
 from ragas.metrics._answer_relevance import ResponseRelevancy
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from ragas import RunConfig
-from rag.pipeline import rag_query_test
+from rag.core.container import container
+from rag.pipeline import RAGPipeline
 import time
+
+pipeline = RAGPipeline(container)
 
 eval_embed = GoogleGenerativeAIEmbeddings(
     model=os.getenv("model_embedding_name"), google_api_key=os.getenv("API_KEY")
@@ -46,7 +49,7 @@ def eval():
         question = item["question"]
         truth = item["ground_truth"]
 
-        answer, context = rag_query_test(question)
+        answer, context = pipeline.query_with_contexts(question)
 
         data["user_input"].append(question)
         data["reference"].append(truth)

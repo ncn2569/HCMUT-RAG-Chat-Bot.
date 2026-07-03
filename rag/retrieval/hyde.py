@@ -1,43 +1,35 @@
-import re
-from google import genai
-from dotenv import load_dotenv
+"""
+rag/retrieval/hyde.py
+=====================
+HyDE (Hypothetical Document Embeddings) — kỹ thuật cải thiện Dense Search
+cho các câu hỏi phức tạp (query_type == "COMPLEX").
+
+Thay vì embed trực tiếp câu hỏi của người dùng (thường ngắn, mơ hồ),
+ta dùng LLM để sinh ra một "tài liệu giả định" (hypothetical document) như thể
+đó là câu trả lời. Sau đó embed tài liệu giả định này → vector gần hơn với
+các tài liệu thật trong DB → retrieval chính xác hơn.
+
+"""
+
 import os
+import re
 
-load_dotenv("config/.env")
-client = genai.Client(api_key=os.getenv("API_KEY"))
-
-
-def generate_hypothetical_query(query, model_name=os.getenv("model_name")):
-
-    prompt = f"""Bạn đang hỗ trợ hệ thống tìm kiếm trong cơ sở dữ liệu hỏi đáp.
-
-    Hãy viết lại câu sau bằng cách diễn đạt khác nhưng giữ nguyên ý nghĩa.
-    Mục tiêu là tạo một câu hỏi tương tự về mặt ngữ nghĩa để giúp tìm được các câu hỏi và tài liệu liên quan.
-
-    Hướng dẫn:
-    - Diễn đạt lại tự nhiên bằng cách khác.
-    - Có thể thay đổi từ ngữ hoặc cấu trúc câu.
-    - Chỉ trả về câu hỏi đã viết lại, không giải thích.
-
-    Câu hỏi gốc: {query}
-
-    Câu hỏi tương tự:"""
-
-    try:
-        response = client.models.generate_content(
-            model=os.getenv("model_name"), contents=prompt
-        )
-        hypothetical = response.text.strip() if response.text else query
-        hypothetical = hypothetical.split("\n")[0].strip()
-        hypothetical = re.sub(r"^(Câu hỏi tương tự[:：]\s*)", "", hypothetical)
-    except Exception as e:
-        print(f"Error ở bước Hyde: {e}")
-        hypothetical = query
-
-    return hypothetical
+from rag.core.container import container as _container
 
 
-def generate_hypothetical_document(query, model_name=os.getenv("model_name")):
+def generate_hypothetical_document(query, model_name=None):
+    """
+    Sinh ra một "tài liệu giả định" (hypothetical document) để cải thiện dense search.
+
+    Args:
+        query      : Câu hỏi của người dùng (đã được rewrite).
+        model_name : Tên model LLM (mặc định lấy từ env MODEL_NAME).
+
+    Returns:
+        Chuỗi văn bản giả định, hoặc chính `query` nếu sinh thất bại.
+    """
+    if model_name is None:
+        model_name = os.getenv("model_name")
 
     prompt = f"""Bạn đang hỗ trợ hệ thống tìm kiếm tài liệu.
 
@@ -54,9 +46,7 @@ def generate_hypothetical_document(query, model_name=os.getenv("model_name")):
     Tài liệu giả định:"""
 
     try:
-        response = client.models.generate_content(
-            model=os.getenv("model_name"), contents=prompt
-        )
+        response = _container.client.models.generate_content(model=model_name, contents=prompt)
         hypothetical = response.text.strip() if response.text else query
         hypothetical = re.sub(
             r"^(Tài liệu giả định[:：]\s*)", "", hypothetical, flags=re.IGNORECASE

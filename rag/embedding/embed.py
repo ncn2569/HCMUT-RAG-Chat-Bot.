@@ -3,12 +3,13 @@ import os
 import json
 import numpy as np
 
+from google import genai
+from google.genai import types
+
 load_dotenv("config/.env")
 os.environ["HF_HOME"] = os.getenv("HF_HOME")
 token = os.getenv("HF_TOKEN")
 
-from google import genai
-from google.genai import types
 
 client = genai.Client(api_key=os.getenv("API_KEY"))
 

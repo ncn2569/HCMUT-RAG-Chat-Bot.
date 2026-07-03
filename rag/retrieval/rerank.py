@@ -1,18 +1,46 @@
+"""
+rag/retrieval/rerank.py
+=======================
+Reranker dùng mô hình BAAI/bge-reranker-v2-m3.
+"""
+
 import torch
+from functools import lru_cache
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-tokenizer = AutoTokenizer.from_pretrained(
-    "BAAI/bge-reranker-v2-m3"
-)  # first recommend from gemini (AI sẽ thay thế con người sớm thôi)
-model = AutoModelForSequenceClassification.from_pretrained("BAAI/bge-reranker-v2-m3")
-model.eval()
+RERANKER_MODEL_NAME = "BAAI/bge-reranker-v2-m3"
+
+
+@lru_cache(maxsize=1)
+def get_reranker():
+    """
+    Load và cache model + tokenizer của reranker.
+    lru_cache(maxsize=1) đảm bảo chỉ load 1 lần duy nhất trong suốt vòng đời app.
+    """
+    print(f"[Reranker] Đang load model '{RERANKER_MODEL_NAME}'...")
+    tokenizer = AutoTokenizer.from_pretrained(RERANKER_MODEL_NAME)
+    model = AutoModelForSequenceClassification.from_pretrained(RERANKER_MODEL_NAME)
+    model.eval()
+    print("[Reranker] Load xong!")
+    return model, tokenizer
 
 
 def rerank(query, rrf_list, data, top_k=5):
-    pairs = []
-    for idx, _ in rrf_list:
-        doc_text = data[idx]["text"]
-        pairs.append([query, doc_text])
+    """
+    Rerank danh sách kết quả từ RRF bằng cross-encoder BAAI/bge-reranker-v2-m3.
+
+    Args:
+        query    : Câu truy vấn gốc.
+        rrf_list : List[(idx, rank)] từ rrf_fuse().
+        data     : Danh sách chunks dữ liệu thô (list of dict {"text": ...}).
+        top_k    : Số kết quả trả về sau rerank.
+
+    Returns:
+        List[(idx, score)] đã sort giảm dần theo score.
+    """
+    model, tokenizer = get_reranker()
+
+    pairs = [[query, data[idx]["text"]] for idx, _ in rrf_list]
 
     with torch.no_grad():
         inputs = tokenizer(
@@ -20,20 +48,15 @@ def rerank(query, rrf_list, data, top_k=5):
         )
         scores = (
             model(**inputs, return_dict=True)
-            .logits.view(
-                -1,
-            )
+            .logits.view(-1)
             .float()
         )
         scores = torch.sigmoid(scores).tolist()
 
-    # print(rrf_list,inputs,scores)
     results = []
-
     for i, (idx, _) in enumerate(rrf_list):
         score_val = scores[i] if isinstance(scores, list) else scores
         results.append((idx, score_val))
 
     results.sort(key=lambda x: x[1], reverse=True)
-
     return results[:top_k]
