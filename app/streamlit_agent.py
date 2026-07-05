@@ -80,8 +80,8 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"], avatar=message.get("avatar")):
         st.markdown(message["content"])
         if "thought_logs" in message and message["thought_logs"]:
-            with st.expander("🧠 Xem quá trình suy luận (Plan & Tool)"):
-                st.code(message["thought_logs"], language="json")
+            with st.expander("🧠 Trích xuất suy luận & Log hệ thống"):
+                st.code(message["thought_logs"], language="text")
 
 if prompt := st.chat_input("Hỏi thử 1 câu đánh đố xem Agent xử lý sao nhé..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -91,12 +91,13 @@ if prompt := st.chat_input("Hỏi thử 1 câu đánh đố xem Agent xử lý s
     with st.chat_message("assistant", avatar="🤖"):
         with st.status("Đang suy nghĩ...", expanded=True) as status:
             with capture_stdout() as output:
-                bot_response = agent.run(query=prompt, history=[])
+                bot_response = agent.run(query=prompt)
 
             logs = output.getvalue()
 
             # Bóc tách phần "thought" từ log để hiển thị như Claude
             thought_text = ""
+            rewritten_text = ""
             if "KẾ HOẠCH CỦA LLM" in logs:
                 with contextlib.suppress(Exception):
                     json_str = (
@@ -108,10 +109,39 @@ if prompt := st.chat_input("Hỏi thử 1 câu đánh đố xem Agent xử lý s
                     )
                     plan_dict = json.loads(json_str)
                     thought_text = plan_dict.get("thought", "")
+                    rewritten_text = plan_dict.get("rewritten_query", "")
+
+            # Bóc tách nguồn tài liệu từ DB
+            db_sources = []
+            if "NGUỒN TÀI LIỆU " in logs:
+                with contextlib.suppress(Exception):
+                    src_str = logs.split("NGUỒN TÀI LIỆU ")[1].split("************************************************")[0].strip().strip("*").strip()
+                    db_sources = json.loads(src_str)
+            
+            # Bóc tách nguồn tài liệu từ Web
+            web_sources = []
+            if "NGUỒN TÀI LIỆU BỔ SUNG (WEB)" in logs:
+                with contextlib.suppress(Exception):
+                    web_str = logs.split("NGUỒN TÀI LIỆU BỔ SUNG (WEB)")[1].split("************************************************")[0].strip().strip("*").strip()
+                    web_sources = json.loads(web_str)
 
             if thought_text:
                 st.markdown(f"_{thought_text}_")
-            elif logs.strip():
+            if rewritten_text and rewritten_text != prompt:
+                st.info(f"**Câu hỏi đã được hiểu lại:** {rewritten_text}", icon="💡")
+                
+            if db_sources or web_sources:
+                with st.expander("📚 Xem nguồn tài liệu tham khảo"):
+                    if db_sources:
+                        st.markdown("**Từ Cơ sở dữ liệu (Database):**")
+                        for idx, src in enumerate(db_sources, 1):
+                            st.info(f"**[{idx}]** {src}")
+                    if web_sources:
+                        st.markdown("**Từ Internet (Web Search):**")
+                        for idx, src in enumerate(web_sources, 1):
+                            st.success(f"**[{idx}]** {src}")
+                            
+            if not thought_text and logs.strip() and "NGUỒN TÀI LIỆU" not in logs:
                 st.code(logs, language="text")
 
             status.update(label="Suy nghĩ xong", state="complete", expanded=False)

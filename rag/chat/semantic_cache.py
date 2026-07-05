@@ -3,18 +3,6 @@ rag/chat/semantic_cache.py
 ==========================
 SemanticCache — Cache thông minh dựa trên ngữ nghĩa (semantic similarity).
 
-THAY ĐỔI SO VỚI BẢN CŨ:
-  - Trước: `embedder = load_embedder()` được gọi ngay khi file này được import.
-    → Tạo 1 genai.Client mới, độc lập hoàn toàn với client ở pipeline.py/agent.py.
-    → RAM bị chiếm thêm không cần thiết.
-
-  - Sau: `embedder` được inject qua constructor: `SemanticCache(embedder=...)`
-    → Dùng chung client từ ResourceContainer.
-    → Không tạo connection dư thừa.
-
-  - Tương tự với reranker: thay vì `from rag.retrieval.rerank import model, tokenizer`
-    (load ngay khi import), giờ dùng `get_reranker()` từ rerank.py → lazy load.
-
 LUỒNG HOẠT ĐỘNG:
   1. check(query) :
      a. Exact match → trả về ngay (O(n), nhanh nhất).
@@ -54,7 +42,7 @@ class SemanticCache:
         max_size  : Số lượng entry tối đa giữ trong cache.
     """
 
-    def __init__(self, embedder, threshold: float = 0.85, max_size: int = 20):
+    def __init__(self, embedder, threshold: float = 0.75, max_size: int = 20):
         """
         Args:
             embedder  : genai.Client (inject từ ResourceContainer).

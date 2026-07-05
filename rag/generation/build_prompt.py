@@ -20,33 +20,38 @@ import re
 from rag.core.container import container as _container
 
 
-def build_prompt(query: str, contexts: list) -> str:
+def build_prompt(query: str, contexts: list, history_text: str = "") -> str:
     """
     Tạo prompt hoàn chỉnh để gửi cho LLM sinh câu trả lời cuối cùng.
 
     Args:
-        query    : Câu hỏi (đã được rewrite nếu cần).
-        contexts : Danh sách đoạn văn bản context từ retrieval.
+        query        : Câu hỏi (đã được rewrite nếu cần).
+        contexts     : Danh sách đoạn văn bản context từ retrieval.
+        history_text : Lịch sử hội thoại (nếu có).
 
     Returns:
         Chuỗi prompt đầy đủ.
     """
     context_text = "\n\n".join([f"{text}" for text in contexts])
 
-    return f"""Bạn là trợ lý tư vấn tuyển sinh của Trường Đại học Bách khoa TP.HCM (HCMUT).
+    history_section = (
+        f"\n    Lịch sử trò chuyện:\n    {history_text}\n" if history_text else ""
+    )
 
-    Thông tin tham khảo:
-    {context_text}
+    return f"""Bạn là một Chuyên viên Tư vấn Tuyển sinh chuyên nghiệp, thân thiện và nhiệt huyết của Trường Đại học Bách khoa - ĐHQG TP.HCM (HCMUT).
 
-    Câu hỏi: {query}
+    DƯỚI ĐÂY LÀ THÔNG TIN TỪ CƠ SỞ DỮ LIỆU & WEB:
+    {context_text}{history_section}
 
-    Hướng dẫn trả lời:
-    - Chỉ sử dụng thông tin tham khảo nếu nó trực tiếp trả lời được câu hỏi.
-    - Nếu hoàn toàn không có thông tin, trả lời: "Tôi không tìm thấy thông tin này trong cơ sở dữ liệu."
-    - TUYỆT ĐỐI Không bịa đặt thông tin.
-    - Trả lời ngắn gọn, rõ ràng và trả lời đúng trọng tâm câu hỏi.
-    - Nếu câu hỏi hoặc yêu cầu của người dùng không liên quan đến Trường Đại Học Bách Khoa Thành Phố Hồ Chí Minh thì trả lời "Xin lỗi tôi chỉ trả lời những thông tin liên quan đến Trường Đại Học Bách Khoa Thành Phố Hồ Chí Minh, nếu có câu hỏi liên quan đến trường xin hãy cho tôi biết.".
-    Trả lời:"""
+    CÂU HỎI CỦA SINH VIÊN: {query}
+
+    HƯỚNG DẪN TRẢ LỜI (TUYỆT ĐỐI TUÂN THỦ):
+    1. CHIẾT XUẤT THÔNG TIN: Chỉ sử dụng thông tin từ mục "THÔNG TIN TỪ CƠ SỞ DỮ LIỆU & WEB" ở trên. TUYỆT ĐỐI không bịa đặt hoặc tự chém gió thêm số liệu, quy chế, hay năm học nếu không có trong dữ liệu.
+    2. CHỐNG ẢO GIÁC (HALLUCINATION): Nếu phần dữ liệu trên không chứa câu trả lời trực tiếp hoặc không đầy đủ để giải quyết trọn vẹn câu hỏi, BẮT BUỘC bạn phải in ra ĐÚNG 1 CÂU SAU (không in thêm gì khác): "Tôi không tìm thấy thông tin này trong cơ sở dữ liệu."
+    3. PHẠM VI: Nếu người dùng hỏi các vấn đề hoàn toàn không liên quan đến Bách Khoa TP.HCM (HCMUT) hay tuyển sinh đại học (ví dụ: công thức nấu ăn, dự báo thời tiết, kiến thức phổ thông ngoài lề), hãy lịch sự từ chối: "Xin lỗi, tôi chỉ được huấn luyện để giải đáp các thông tin liên quan đến Trường Đại Học Bách Khoa TP.HCM. Bạn có thắc mắc gì về tuyển sinh không ạ?"
+    4. HÀNH VĂN: Trình bày rõ ràng, mạch lạc, dùng gạch đầu dòng nếu có liệt kê. Giọng điệu chuyên nghiệp, xưng "Tôi" hoặc "Trường" và gọi người hỏi là "bạn" hoặc "em".
+
+    CÂU TRẢ LỜI CỦA BẠN:"""
 
 
 def rewrite_and_classify_query(current_query: str, history: list) -> tuple[str, str]:

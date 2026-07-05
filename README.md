@@ -153,4 +153,53 @@ User Query
     → Lưu ngầm câu trả lời vào Semantic Cache (Asynchronous) & Cập nhật History.
 ```
 
-nhiên cứu host local + add tools + với triển khai thành agents chứ thật sự là không biết làm gì RAG này nữa.
+---
+
+## 🤖 HCMUT Agentic RAG (Chế độ Agent)
+
+Ngoài RAG pipeline cơ bản, project đã được nâng cấp lên chuẩn **Agentic RAG** với kiến trúc Plan-and-Execute + Self-Reflection. Đây là chế độ đang được triển khai thực tế qua `app/streamlit_agent.py`.
+
+### Tính năng nổi bật của Agent
+
+- **Plan-and-Execute:** LLM tự lập kế hoạch — tự suy luận, tự chọn Tool (`search_db` hay `search_web`), tự sinh `rewritten_query` — tất cả trong **1 API call duy nhất**.
+- **Context-Aware History (5 lượt):** Agent nhớ 5 lượt hội thoại gần nhất. Nếu user hỏi "Học phí của nó?", Agent tự hiểu "nó" là ngành vừa đề cập ở lượt trước và viết lại câu hỏi hoàn chỉnh trước khi tìm kiếm.
+- **Self-Reflection & Fallback:** Nếu DB nội bộ không đủ thông tin, Agent tự phát hiện và tự động fallback sang tìm kiếm Web (Tavily API) mà không cần người dùng can thiệp.
+- **Semantic Cache tích hợp:** Câu hỏi trùng lặp được trả về từ Cache với **0 LLM API call**, tiết kiệm triệt để giới hạn RPM.
+- **Kháng lỗi:** Tất cả điểm gọi API đều có `try/except`, bot không crash khi API lỗi hoặc hết quota.
+
+### Cấu trúc file bổ sung (Agent Mode)
+
+```text
+hcmut-rag-chatbot/
+├── app/
+│   ├── streamlit_app.py       # Giao diện RAG thuần (pipeline cũ)
+│   └── streamlit_agent.py     # Giao diện Agent (đang dùng)
+├── rag/
+│   ├── agent.py               # RAGAgent — Plan-and-Execute core
+│   └── chat/
+│       ├── history.py         # Quản lý lịch sử hội thoại
+│       └── semantic_cache.py  # Cache ngữ nghĩa 2 tầng
+└── agent_architecture.md      # Tài liệu kiến trúc Agent chi tiết
+```
+
+### Số lượng API calls per lượt hỏi
+
+| Kịch bản | LLM Calls | Embedding | Tavily | Tổng RPM |
+| :--- | :---: | :---: | :---: | :---: |
+| Cache Hit | **0** | 1 | 0 | **1** |
+| DB có đáp án | **2** | 1 | 0 | **3** |
+| Phải Fallback Web | **3** | 1 | 1 | **4** |
+
+### Chạy ở chế độ Agent
+
+```bash
+python -m streamlit run app/streamlit_agent.py
+```
+
+> Xem chi tiết kiến trúc tại [agent_architecture.md](agent_architecture.md).
+
+### Thêm biến môi trường cho Agent
+
+```env
+tavily_key="your-tavily-api-key"   # Lấy miễn phí tại tavily.com
+```
