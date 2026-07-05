@@ -161,8 +161,9 @@ Ngoài RAG pipeline cơ bản, project đã được nâng cấp lên chuẩn **
 
 ### Tính năng nổi bật của Agent
 
-- **Plan-and-Execute:** LLM tự lập kế hoạch — tự suy luận, tự chọn Tool (`search_db` hay `search_web`), tự sinh `rewritten_query` — tất cả trong **1 API call duy nhất**.
+- **Plan-and-Execute:** LLM tự lập kế hoạch — tự suy luận, tự chọn Tool (`search_db`, `search_web`, hoặc `predict_admission`), tự sinh `rewritten_query` — tất cả trong **1 API call duy nhất**.
 - **Context-Aware History (5 lượt):** Agent nhớ 5 lượt hội thoại gần nhất. Nếu user hỏi "Học phí của nó?", Agent tự hiểu "nó" là ngành vừa đề cập ở lượt trước và viết lại câu hỏi hoàn chỉnh trước khi tìm kiếm.
+- **Dự đoán cơ hội đỗ (Predict Admission):** Tích hợp công cụ tính điểm quy đổi (ĐGNL, THPT, Học bạ) và đối khớp mờ tên ngành (Fuzzy Match) để so sánh với phổ điểm các năm và đưa ra đánh giá cơ hội đậu.
 - **Self-Reflection & Fallback:** Nếu DB nội bộ không đủ thông tin, Agent tự phát hiện và tự động fallback sang tìm kiếm Web (Tavily API) mà không cần người dùng can thiệp.
 - **Semantic Cache tích hợp:** Câu hỏi trùng lặp được trả về từ Cache với **0 LLM API call**, tiết kiệm triệt để giới hạn RPM.
 - **Kháng lỗi:** Tất cả điểm gọi API đều có `try/except`, bot không crash khi API lỗi hoặc hết quota.

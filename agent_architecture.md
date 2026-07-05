@@ -28,6 +28,7 @@ Mỗi khi người dùng đặt một câu hỏi, Agent sẽ lần lượt đi q
 - Hệ thống bóc tách `primary_action` và gọi hàm tương ứng.
 - **Nếu là `search_db`:** Gọi HybridRetriever (Dense + BM25 + RRF + Reranker). Hoạt động hoàn toàn Local, không tốn API call.
 - **Nếu là `search_web`:** Gọi thẳng Tavily API để cào dữ liệu từ Internet.
+- **Nếu là `predict_admission`:** Công cụ tự động tính toán điểm xét tuyển (ĐGNL, THPT, Học bạ) dựa theo công thức quy đổi, kết hợp đối khớp mờ tên ngành (Fuzzy Matching) để dự đoán cơ hội đỗ dựa trên dữ liệu lịch sử (`admission_scores.json`).
 
 ### Bước 3: Sinh câu trả lời lần 1 & Chặn Ảo giác (1st Generation, 1 LLM call)
 - Hệ thống đẩy `contexts` + `rewritten_query` + **lịch sử hội thoại** vào prompt.
@@ -77,9 +78,11 @@ graph TD
 
     F -->|search_db| G[HybridRetriever - Dense + BM25 + RRF + Rerank]
     F -->|search_web| H[Tavily Web Search API]
+    F -->|predict_admission| H2[Tính điểm & Khớp tên ngành (Fuzzy Match)]
 
     G --> I[Nạp Context + History vào LLM]
     H --> I
+    H2 --> I
 
     I --> J["LLM sinh câu trả lời lần 1 (1 call)"]
     J --> K{Self-Reflection}
